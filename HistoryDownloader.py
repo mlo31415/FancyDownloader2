@@ -145,22 +145,45 @@ ignorePages=[]      # Names of pages to be ignored
 ignorePagePrefixes=["system_", "index_", "forum_", "admin_", "search_"]     # Prefixes of names of pages to be ignored
 
 # Instantiate the web browser Selenium will use
-browser=webdriver.Firefox(executable_path=r'C:\Windows\system32\geckodriver.exe')
+browser=webdriver.Firefox()
+
+# Log in using the automation ID
+browser.get("http://fancyclopedia.org")
+el=browser.find_element_by_xpath('//*[@id="login-status"]/a[2]')
+if el is not None:
+    mainHandle=browser.window_handles[0]
+    el.click()
+    loginHandle=browser.window_handles[1]
+    browser.switch_to.window(loginHandle)
+    browser.implicitly_wait(1)
+    el=browser.find_element_by_xpath('/html/body/div[2]/div[2]/div/div[1]/div[1]/form/div[1]/div/input')
+    el.send_keys("FancyAutomation")
+    el=browser.find_element_by_xpath('/html/body/div[2]/div[2]/div/div[1]/div[1]/form/div[2]/div/input')
+    pw=""
+    with open("password.txt", 'r') as file:
+        pw=file.readline()
+    el.send_keys(pw)
+    el.submit()
 
 # Get the magic URL for api access
 url=open("url.txt").read()
 
-# Now, get list of recently modified pages.  It will be ordered from least-recently-updated to most.
-# (We're using composition, here.)
-print("Get list of all pages from Wikidot, sorted from most- to least-recently-updated")
-listOfAllWikiPages=client.ServerProxy(url).pages.select({"site" : "fancyclopedia", "order": "updated_at"})
-listOfAllWikiPages=[name.replace(":", "_", 1) for name in listOfAllWikiPages]   # ':' is used for non-standard namespaces on wiki. Replace the first ":" with "_" in all page names because ':' is invalid in Windows file names
-listOfAllWikiPages=[name if name != "con" else "con-" for name in listOfAllWikiPages]   # Handle the "con" special case
+listOfAllWikiPages=None
+listOfAllWikiPages=["Dave Kyle", "Art Widner", "Boskone", "Lunacon", "SF"]
 
-# Remove the skipped pages from the list of pages
-for prefix in ignorePagePrefixes:
-    listOfAllWikiPages=[p for p in listOfAllWikiPages if not p.startswith(prefix) ]
-listOfAllWikiPages=[p for p in listOfAllWikiPages if p not in ignorePages]      # And the ignored pages
+if listOfAllWikiPages is None:  # Allow a test list to override the real list
+
+    # Now, get list of recently modified pages.  It will be ordered from least-recently-updated to most.
+    # (We're using composition, here.)
+    print("Get list of all pages from Wikidot, sorted from most- to least-recently-updated")
+    listOfAllWikiPages=client.ServerProxy(url).pages.select({"site" : "fancyclopedia", "order": "updated_at"})
+    listOfAllWikiPages=[name.replace(":", "_", 1) for name in listOfAllWikiPages]   # ':' is used for non-standard namespaces on wiki. Replace the first ":" with "_" in all page names because ':' is invalid in Windows file names
+    listOfAllWikiPages=[name if name != "con" else "con-" for name in listOfAllWikiPages]   # Handle the "con" special case
+
+    # Remove the skipped pages from the list of pages
+    for prefix in ignorePagePrefixes:
+        listOfAllWikiPages=[p for p in listOfAllWikiPages if not p.startswith(prefix) ]
+    listOfAllWikiPages=[p for p in listOfAllWikiPages if p not in ignorePages]      # And the ignored pages
 
 # Get the list of individual pages to be skipped, one page name per line
 # If donelist.txt is empty or does not exist, no pages will be skipped
